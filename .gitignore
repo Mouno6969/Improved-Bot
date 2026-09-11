@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Secrets & local config
+a.js
+fca-config.json
+.env
+.env.*
+!.env.example
+Fca_Database/
+*.sqlite
+
+# Build output
+# NOTE: upstream ignores dist/ because it builds on demand. This repo vendors the
+# published 4.0.3 build, so dist/ is intentionally tracked. Re-enable the line below
+# if you switch to building from src/ yourself.
+# dist/
+
+# Session / credentials (never commit)
+appstate.json
+**/appstate.json
+cookie.txt
+*.pem
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Pack / cache
+*.tgz
+.eslintcache
+
+# IDE / local
+.idea/
+*.swp
+*.swo
+*~
+.cursor/
