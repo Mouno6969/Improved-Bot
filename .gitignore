@@ -28,6 +28,9 @@ cookie.txt
 Thumbs.db
 desktop.ini
 
+# Call-probe captures (personal data - never commit)
+capture/
+
 # Logs
 *.log
 npm-debug.log*

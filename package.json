@@ -26,7 +26,9 @@
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.typecheck.json --noEmit",
     "build": "tsup src/index.ts --format cjs,esm --dts --clean --out-dir dist --external gradient-string && node scripts/cjs-bridge.cjs",
-    "build:types": "tsc -p tsconfig.build.json --emitDeclarationOnly"
+    "build:types": "tsc -p tsconfig.build.json --emitDeclarationOnly",
+    "probe": "node tools/call-probe/probe.js",
+    "probe:analyze": "node tools/call-probe/analyze.js"
   },
   "repository": {
     "type": "git",
