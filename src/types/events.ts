@@ -11,6 +11,7 @@ export interface MessageEvent extends EventBase {
   messageID: string;
   body?: string;
   attachments?: Loose[];
+  isGroup?: boolean;
 }
 
 export interface ReactionEvent extends EventBase {
@@ -81,6 +82,19 @@ export interface StopListenEvent extends EventBase {
   error: string;
 }
 
+export interface GroupCallListenEvent extends EventBase {
+  type: "group_call";
+  threadID: FcaID;
+  callId?: string | null;
+  callerID?: FcaID;
+  isVideo?: boolean;
+  isGroup?: boolean;
+  status?: string;
+  participants?: string[];
+  raw?: Loose;
+  timestamp?: number;
+}
+
 export type MqttEvent =
   | MessageEvent
   | ReactionEvent
@@ -92,6 +106,7 @@ export type MqttEvent =
   | FriendRequestCancelEvent
   | ReadyEvent
   | ThreadEvent
+  | GroupCallListenEvent
   | AccountInactiveEvent
   | StopListenEvent;
 

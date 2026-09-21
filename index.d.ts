@@ -117,6 +117,21 @@ declare module '@dongdev/fca-unofficial' {
     removeUserFromGroup: (userID: string, threadID: string, callback?: (err?: Error) => void) => Promise<void>;
     createNewGroup: (participantIDs: string[], groupTitle?: string, callback?: (err: Error, threadID: string) => void) => Promise<string>;
 
+    // Group calls
+    joinGroupCall: (
+      threadID: string,
+      options?: { isVideo?: boolean; mute?: boolean; startIfMissing?: boolean },
+      callback?: (err?: Error, result?: IFCAU_JoinGroupCallResult) => void
+    ) => Promise<IFCAU_JoinGroupCallResult>;
+    leaveGroupCall: (
+      threadID: string,
+      callback?: (err?: Error, result?: { success: true; threadID: string; callId: string | null; left: boolean }) => void
+    ) => Promise<{ success: true; threadID: string; callId: string | null; left: boolean }>;
+    getGroupCall: (
+      threadID: string,
+      callback?: (err?: Error, call?: IFCAU_GroupCallState | null) => void
+    ) => Promise<IFCAU_GroupCallState | null>;
+
     // Admin & Permissions
     changeAdminStatus: (threadID: string, adminIDs: string | string[], adminStatus: boolean, callback?: (err?: Error) => void) => Promise<void>;
     changeApprovalMode: (approvalMode: 0 | 1, threadID: string, callback?: (err?: Error) => void) => Promise<void>;
@@ -215,6 +230,25 @@ declare module '@dongdev/fca-unofficial' {
 
     // Auto-save AppState
     enableAutoSaveAppState: (options?: { filePath?: string; interval?: number; saveOnLogin?: boolean }) => () => void;
+  };
+
+  export type IFCAU_GroupCallState = {
+    threadID: string;
+    callId: string | null;
+    isVideo: boolean;
+    mute: boolean;
+    status: "ringing" | "active" | "ended";
+    participants: string[];
+    botJoined: boolean;
+    started: boolean;
+    startedAt: number;
+    updatedAt: number;
+    source: "mqtt" | "graphql" | "event" | "command";
+  };
+
+  export type IFCAU_JoinGroupCallResult = IFCAU_GroupCallState & {
+    success: true;
+    joined: boolean;
   };
 
   // ============================================================================
@@ -381,6 +415,17 @@ declare module '@dongdev/fca-unofficial' {
       logMessageType: "log:thread-call";
       threadID: string;
       participantIDs: string[];
+    }
+    | {
+      type: "group_call";
+      threadID: string;
+      callId: string | null;
+      callerID?: string;
+      isVideo: boolean;
+      isGroup: boolean;
+      status: "ringing" | "active" | "ended" | "join" | "leave" | "update";
+      participants: string[];
+      timestamp: number;
     }
     | {
       type: "typ";

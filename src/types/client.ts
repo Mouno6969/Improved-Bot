@@ -13,6 +13,7 @@ export interface FcaClientFacade {
   realtime: FcaClientNamespace;
   http: FcaClientNamespace;
   scheduler: FcaClientNamespace;
+  calls: FcaClientNamespace;
 }
 
 export interface FcaClientNamespaces {
@@ -23,4 +24,5 @@ export interface FcaClientNamespaces {
   realtime: FcaClientNamespace;
   http: FcaClientNamespace;
   scheduler: FcaClientNamespace;
+  calls: FcaClientNamespace;
 }

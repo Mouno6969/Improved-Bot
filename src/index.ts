@@ -33,6 +33,13 @@ export { createRealtimeDomain } from "./domains/realtime";
 export { createUsersDomain } from "./domains/users";
 export { createAccountDomain } from "./domains/account";
 export { createHttpDomain } from "./domains/http";
-export { createSchedulerDomain } from "./domains/scheduler";
+export { createCallsDomain } from "./domains/calls";
+export {
+  parseCallCommand,
+  parseJoinCommand,
+  createJoinCommandHandler,
+  formatRtcMessage,
+  applyGroupCallEvent
+} from "./domains/calls";
 
 export * from "./types";

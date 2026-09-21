@@ -14,7 +14,8 @@ const RECONNECT_JITTER_MS = 400;
 
 function createListenMqtt(deps: Loose) {
   const { WebSocket, mqtt, HttpsProxyAgent, buildStream, buildProxy,
-    topics, parseDelta, getTaskResponseData, logger, emitAuth
+    topics, parseDelta, getTaskResponseData, logger, emitAuth,
+    formatRtcMessage, applyGroupCallEvent
   } = deps;
 
   return function listenMqtt(defaultFuncs: Loose, api: Loose, ctx: Loose, globalCallback: Loose) {
@@ -315,6 +316,23 @@ function createListenMqtt(deps: Loose) {
             const taskRespData = getTaskResponseData(taskType, parsedPayload);
             if (taskRespData == null) taskCallback("error", null);
             else taskCallback(null, Object.assign({ type: taskType, reqID }, taskRespData));
+          }
+        } else if (
+          topic === "/webrtc" ||
+          topic === "/rtc_multi" ||
+          topic === "/onevc" ||
+          topic === "/webrtc_response"
+        ) {
+          if (typeof formatRtcMessage === "function") {
+            const rtcEvent = formatRtcMessage(topic, jsonMessage, ctx);
+            if (rtcEvent) {
+              try {
+                applyGroupCallEvent?.(ctx, rtcEvent);
+              } catch {
+                /* ignore tracker errors */
+              }
+              globalCallback(null, rtcEvent);
+            }
           }
         }
       } catch (ex: Loose) {
