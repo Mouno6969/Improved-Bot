@@ -204,6 +204,7 @@ const bot = await createMessengerBot(
 | `typingStop`         | A user stops typing                           |
 | `threadUpdate`       | Thread metadata changes (title, participants) |
 | `ready`              | MQTT connection established                   |
+| `groupCall`          | Group / RTC call update (`type: "group_call"`) |
 | `raw` / `update`     | Every MQTT delta (unfiltered)                 |
 | `error`              | Any error during listening                    |
 
@@ -231,6 +232,13 @@ bot.hears(/hello/i, async (ctx) => {
 bot.hears("goodbye", async (ctx) => {
   ctx.reply("See you later!");
 });
+
+// Built-in when enableJoinCommand is true (default):
+//   /join          join or start the group call in this chat
+//   /join video    join with video advertised
+//   /leave         leave the current group call
+//   /call          show call status
+
 
 // Error handler for the composer chain
 bot.catch((err, ctx) => {
@@ -263,6 +271,58 @@ await bot.stop();
 ```
 
 When `stopOnSignals` is `true`, the bot automatically calls `stop()` on `SIGINT` / `SIGTERM`.
+
+---
+
+## Group calls
+
+The library can join Messenger **group voice/video calls** so the bot appears in the participant roster. Media (mic/camera WebRTC) is not streamed — this is presence-join, which is what `/join` bots typically need.
+
+### Built-in commands (`MessengerBot`)
+
+`enableJoinCommand` is **on by default**. In a group chat:
+
+| Command | Action |
+|---------|--------|
+| `/join` | Join the active group call, or start one if none is ringing |
+| `/join video` | Same, advertising video |
+| `/join unmute` | Join with audio advertised unmuted |
+| `/leave` or `/hangup` | Leave the call |
+| `/call` | Report whether a call is active and whether the bot is in it |
+
+Disable with `enableJoinCommand: false`. Auto-join incoming calls with `autoJoinGroupCalls: true`.
+
+### API
+
+```javascript
+await api.joinGroupCall(threadID);                 // join or start
+await api.joinGroupCall(threadID, { isVideo: true, mute: true });
+await api.leaveGroupCall(threadID);
+const call = await api.getGroupCall(threadID);     // tracked state or GraphQL lookup
+
+api.listenMqtt((err, event) => {
+  if (event.type === "group_call") {
+    console.log(event.status, event.threadID, event.participants);
+  }
+});
+```
+
+Classic `listenMqtt` bots can attach the same `/join` handler:
+
+```javascript
+const { createJoinCommandHandler } = require("@dongdev/fca-unofficial");
+const handleJoin = createJoinCommandHandler(api);
+
+api.listenMqtt(async (err, event) => {
+  if (err) return console.error(err);
+  if (await handleJoin(event)) return;
+});
+```
+
+Join uses GraphQL roster mutations plus MQTT `/rtc_multi` (the topics were already subscribed). Incoming `/webrtc`, `/rtc_multi`, `/onevc`, and `participant_joined_group_call` events update an in-memory call tracker.
+
+---
+
 
 ---
 

@@ -26,6 +26,7 @@ export function attachClientFacade(
   attachNamespace(api, "realtime", client.realtime);
   attachNamespace(api, "http", client.http);
   attachNamespace(api, "scheduler", client.scheduler);
+  attachNamespace(api, "calls", client.calls);
 
   return client;
 }

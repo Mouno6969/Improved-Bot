@@ -8,6 +8,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- **Group calls:** `api.joinGroupCall(threadID)`, `api.leaveGroupCall(threadID)`, `api.getGroupCall(threadID)`.
+- Built-in MessengerBot commands: `/join`, `/leave`, `/hangup`, `/call` (`enableJoinCommand`, default on).
+- MQTT handling for `/webrtc`, `/rtc_multi`, `/onevc`, `/webrtc_response` plus `group_call` events.
+- `createJoinCommandHandler(api)` for classic `listenMqtt` bots.
+
 ---
 
 ## [4.0.2] - 2026-04-11

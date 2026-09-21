@@ -3,6 +3,7 @@
  */
 import logger from "../../func/logger";
 import formatMod from "../../utils/format";
+import { applyGroupCallEvent, formatCallLogEvent } from "../calls";
 
 const {
   formatDeltaEvent,
@@ -278,6 +279,15 @@ function createParseDelta(deps: Loose) {
               return;
             }
             emitThreadInfoEvent(ctx, globalCallback, fmtMsg);
+            try {
+              const callEvent = formatCallLogEvent(fmtMsg);
+              if (callEvent) {
+                applyGroupCallEvent(ctx, callEvent);
+                globalCallback(null, callEvent);
+              }
+            } catch {
+              /* ignore call-log parse errors */
+            }
             break;
           }
         }

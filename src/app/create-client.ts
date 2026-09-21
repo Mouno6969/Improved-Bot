@@ -116,6 +116,11 @@ function createFallbackNamespaces(api: LegacyApiLike): FcaClientNamespaces {
       post: bindOptionalMethod(api, "httpPost"),
       postFormData: bindOptionalMethod(api, "postFormData")
     }),
+    calls: compactNamespace({
+      join: bindOptionalMethod(api, "joinGroupCall"),
+      leave: bindOptionalMethod(api, "leaveGroupCall"),
+      get: bindOptionalMethod(api, "getGroupCall")
+    }),
     scheduler: compactNamespace((readOptionalMember(api, "scheduler") || {}) as Record<string, Loose>)
   };
 }
@@ -142,7 +147,8 @@ export function createFcaClientFromNamespaces(
     account: compactNamespace(namespaces.account),
     realtime: compactNamespace(namespaces.realtime),
     http: compactNamespace(namespaces.http),
-    scheduler: compactNamespace(namespaces.scheduler)
+    scheduler: compactNamespace(namespaces.scheduler),
+    calls: compactNamespace(namespaces.calls)
   };
 }
 
@@ -155,6 +161,7 @@ export function createFcaClient(api: LegacyApiLike): FcaClientFacade {
     account: mergeNamespace(fallback.account, readNamespace(api, "account")),
     realtime: mergeNamespace(fallback.realtime, readNamespace(api, "realtime")),
     http: mergeNamespace(fallback.http, readNamespace(api, "http")),
-    scheduler: mergeNamespace(fallback.scheduler, readNamespace(api, "scheduler"))
+    scheduler: mergeNamespace(fallback.scheduler, readNamespace(api, "scheduler")),
+    calls: mergeNamespace(fallback.calls, readNamespace(api, "calls"))
   });
 }

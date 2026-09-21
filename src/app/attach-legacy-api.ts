@@ -1,4 +1,5 @@
 import { createAccountDomain } from "../domains/account";
+import { applyGroupCallEvent, createCallsDomain, formatRtcMessage } from "../domains/calls";
 import { createHttpDomain } from "../domains/http";
 import { createMessagesDomain } from "../domains/messages";
 import { createUploadAttachmentCommand } from "../domains/messages/commands/upload-attachment";
@@ -86,7 +87,9 @@ function createLegacyListenMqttFactory(logger: (text: string, type?: string) => 
     parseDelta,
     getTaskResponseData,
     logger,
-    emitAuth
+    emitAuth,
+    formatRtcMessage,
+    applyGroupCallEvent
   });
   const getSeqIDFactory = createGetSeqID({
     listenMqtt: listenMqttCore,
@@ -421,6 +424,26 @@ export function attachLegacyApiSurface(
     }
   }) as Record<string, Loose>;
 
+  const calls = createCallsDomain({
+    join: {
+      defaultFuncs,
+      ctx,
+      generateOfflineThreadingID,
+      logError
+    },
+    leave: {
+      defaultFuncs,
+      ctx,
+      generateOfflineThreadingID,
+      logError
+    },
+    get: {
+      defaultFuncs,
+      ctx,
+      logError
+    }
+  }) as Record<string, Loose>;
+
   const attachRealtimeListener = createLegacyListenMqttFactory(logger);
   const listenMqtt = attachRealtimeListener(defaultFuncs, api, ctx);
 
@@ -489,7 +512,10 @@ export function attachLegacyApiSurface(
     getThreadPictures: threads.getPictures,
     getUserID: users.getID,
     getUserInfo: users.getInfo,
-    getUserInfoV2: users.getInfoV2
+    getUserInfoV2: users.getInfoV2,
+    joinGroupCall: calls.join,
+    leaveGroupCall: calls.leave,
+    getGroupCall: calls.get
   };
 
   const namespaces: FcaClientNamespaces = {
@@ -534,6 +560,13 @@ export function attachLegacyApiSurface(
       mute: threads.mute,
       setTitle: threads.setTitle,
       search: threads.search
+    }),
+    calls: compactNamespace({
+      join: calls.join,
+      leave: calls.leave,
+      get: calls.get,
+      getActive: calls.getActive,
+      listActive: calls.listActive
     }),
     users: compactNamespace({
       getID: users.getID,

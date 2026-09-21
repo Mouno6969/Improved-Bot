@@ -5,6 +5,7 @@ import type { ListenMqttError, MessageEvent, MqttEvent, TypingEvent } from "../t
 import { createFcaClient } from "./create-client";
 import type { FcaClientFacade } from "../types/client";
 import { MessengerContext, type MessengerBotLike } from "./messenger-context";
+import { createJoinCommandHandler } from "../domains/calls";
 
 export interface MessengerBotOptions extends FcaOptions {
   /** Gọi `listenMqtt` ngay sau login. Mặc định `true`. */
@@ -15,6 +16,13 @@ export interface MessengerBotOptions extends FcaOptions {
   commandPrefix?: string;
   /** `process.once('SIGINT'|'SIGTERM')` → `stop()`. Mặc định `false`. */
   stopOnSignals?: boolean;
+  /**
+   * Register built-in `/join`, `/leave`, `/hangup`, and `/call` commands.
+   * Default `true`.
+   */
+  enableJoinCommand?: boolean;
+  /** Automatically join group calls as they start. Default `false`. */
+  autoJoinGroupCalls?: boolean;
   /**
    * Giới hạn listener trên bot (EventEmitter). Mặc định 64.
    * Dùng 0 nếu cần không giới hạn (tốn RAM hơn khi gắn rất nhiều handler).
@@ -34,6 +42,8 @@ interface MessengerBotRuntimeOptions {
   commandPrefix: string;
   stopOnSignals: boolean;
   maxEventListeners: number;
+  enableJoinCommand: boolean;
+  autoJoinGroupCalls: boolean;
 }
 
 interface MqttEmitterLike {
@@ -89,6 +99,9 @@ function emitGatewayEvents(bot: MessengerBot, event: MqttEvent): void {
     case "event":
       emitIf(bot, "threadUpdate", event);
       break;
+    case "group_call":
+      emitIf(bot, "groupCall", event);
+      break;
     case "ready":
       emitIf(bot, "ready", event);
       emitIf(bot, "shardReady", event);
@@ -115,6 +128,8 @@ export class MessengerBot extends EventEmitter implements MessengerBotLike {
   private readonly _enableComposer: boolean;
   private _commandPrefix: string;
   private readonly _stopOnSignals: boolean;
+  private readonly _enableJoinCommand: boolean;
+  private readonly _autoJoinGroupCalls: boolean;
   private readonly _middlewares: MessengerMiddleware[] = [];
   private _catchHandler?: (err: unknown, ctx?: MessengerContext) => void;
   private _signalsBound = false;
@@ -129,6 +144,8 @@ export class MessengerBot extends EventEmitter implements MessengerBotLike {
     this._enableComposer = runtime.enableComposer;
     this._commandPrefix = runtime.commandPrefix;
     this._stopOnSignals = runtime.stopOnSignals;
+    this._enableJoinCommand = runtime.enableJoinCommand;
+    this._autoJoinGroupCalls = runtime.autoJoinGroupCalls;
   }
 
   get commandPrefix(): string {
@@ -230,6 +247,7 @@ export class MessengerBot extends EventEmitter implements MessengerBotLike {
     mqtt.on("message", (event: MqttEvent) => {
       emitGatewayEvents(this, event);
       this.enqueueComposerIfNeeded(event);
+      this.handleAutoJoin(event);
     });
     mqtt.on("error", (err: ListenMqttError) => {
       this.emit("error", err);
@@ -293,6 +311,43 @@ export class MessengerBot extends EventEmitter implements MessengerBotLike {
     this._listening = false;
   }
 
+  private handleAutoJoin(event: MqttEvent): void {
+    if (!this._autoJoinGroupCalls || event.type !== "group_call") {
+      return;
+    }
+    const call = event as Extract<MqttEvent, { type: "group_call" }>;
+    if (call.status !== "ringing" && call.status !== "active" && call.status !== "join") {
+      return;
+    }
+    const threadID = call.threadID == null ? "" : String(call.threadID);
+    if (!threadID || typeof this.api.joinGroupCall !== "function") {
+      return;
+    }
+    void this.api.joinGroupCall(threadID, { mute: true, startIfMissing: false }).catch((err: Loose) => {
+      this.emit("error", err);
+    });
+  }
+
+  private attachJoinCommands(): void {
+    const handler = createJoinCommandHandler({
+      joinGroupCall: (threadID, options) => this.api.joinGroupCall(threadID, options),
+      leaveGroupCall: (threadID) => this.api.leaveGroupCall(threadID),
+      getGroupCall: (threadID) => this.api.getGroupCall(threadID),
+      sendMessage: (message, threadID) => this.api.sendMessage(message, threadID)
+    }, { prefix: this._commandPrefix });
+
+    this.use(async (ctx, next) => {
+      const handled = await handler({
+        type: ctx.event.type,
+        body: ctx.text,
+        threadID: ctx.threadID
+      });
+      if (!handled) {
+        await next();
+      }
+    });
+  }
+
   private enqueueComposerIfNeeded(event: MqttEvent): void {
     if (!this._enableComposer || this._middlewares.length === 0) {
       return;
@@ -336,6 +391,8 @@ export class MessengerBot extends EventEmitter implements MessengerBotLike {
       commandPrefix = "/",
       stopOnSignals = false,
       maxEventListeners = 64,
+      enableJoinCommand = true,
+      autoJoinGroupCalls = false,
       ...fcaOptions
     } = options ?? {};
 
@@ -344,8 +401,14 @@ export class MessengerBot extends EventEmitter implements MessengerBotLike {
       enableComposer,
       commandPrefix,
       stopOnSignals,
-      maxEventListeners
+      maxEventListeners,
+      enableJoinCommand,
+      autoJoinGroupCalls
     });
+
+    if (enableJoinCommand && enableComposer) {
+      bot.attachJoinCommands();
+    }
 
     if (autoListen) {
       await bot.launch({ stopOnSignals });
